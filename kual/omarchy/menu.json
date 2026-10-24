@@ -1,0 +1,5 @@
+{
+	"items": [
+		{"name": "Start Omarchy (power button exits)", "action": "/bin/sh /mnt/base-us/omarchy/bin/session.sh kual-start"}
+	]
+}

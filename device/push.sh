@@ -14,8 +14,11 @@ put() {  # put LOCAL REMOTE
 for m in hdmi drm vgem; do put $R/out/stage/$m.ko $D/modules/$m.ko; done
 put $R/out/stage/SHA256SUMS $D/modules/SHA256SUMS
 put $R/device/modules.sh $D/bin/modules.sh
-for f in chroot session omarchy-provision; do put $R/device/$f.sh $D/bin/$f.sh; done
+for f in chroot session omarchy-provision drill; do put $R/device/$f.sh $D/bin/$f.sh; done
 put $R/bridge/kbridge $D/bin/kbridge
+put $R/bridge/kexit $D/bin/kexit
+k "mkdir -p /mnt/base-us/extensions/omarchy"
+for f in config.xml menu.json; do put $R/kual/omarchy/$f /mnt/base-us/extensions/omarchy/$f; done
 k "install -m 755 $D/bin/kbridge /var/tmp/omarchy/usr/local/bin/kbridge && sync"
 k "chmod +x $D/bin/*"
 tar -C $R/rootfs/overlay -cf - --no-xattrs home usr | k "rm -rf $D/overlay && mkdir -p $D/overlay && tar -xf - -C $D/overlay && sync" && echo "ok $D/overlay"
