@@ -1,0 +1,47 @@
+diff -ruN a/drivers/gpu/drm/vgem/vgem_drv.c b/drivers/gpu/drm/vgem/vgem_drv.c
+--- a/drivers/gpu/drm/vgem/vgem_drv.c	2026-10-24 17:55:06.799231989 +0000
++++ b/drivers/gpu/drm/vgem/vgem_drv.c	2026-10-24 17:55:06.799570239 +0000
+@@ -34,6 +34,7 @@
+ #include <linux/ramfs.h>
+ #include <linux/shmem_fs.h>
+ #include <linux/dma-buf.h>
++#include <linux/platform_device.h>
+ #include "vgem_drv.h"
+ 
+ #define DRIVER_NAME	"vgem"
+@@ -359,12 +360,18 @@
+ };
+ 
+ static struct drm_device *vgem_device;
++/* Backport of 4.12: a platform parent gives card0 a /sys/dev/char/226:0/device link for libdrm. */
++static struct platform_device *vgem_pdev;
+ 
+ static int __init vgem_init(void)
+ {
+ 	int ret;
+ 
+-	vgem_device = drm_dev_alloc(&vgem_driver, NULL);
++	vgem_pdev = platform_device_register_simple("vgem", -1, NULL, 0);
++	if (IS_ERR(vgem_pdev))
++		return PTR_ERR(vgem_pdev);
++
++	vgem_device = drm_dev_alloc(&vgem_driver, &vgem_pdev->dev);
+ 	if (IS_ERR(vgem_device)) {
+ 		ret = PTR_ERR(vgem_device);
+ 		goto out;
+@@ -387,6 +394,7 @@
+ 	drm_mode_config_cleanup(vgem_device);
+ 	drm_dev_unref(vgem_device);
+ out:
++	platform_device_unregister(vgem_pdev);
+ 	return ret;
+ }
+ 
+@@ -395,6 +403,7 @@
+ 	drm_dev_unregister(vgem_device);
+ 	drm_mode_config_cleanup(vgem_device);
+ 	drm_dev_unref(vgem_device);
++	platform_device_unregister(vgem_pdev);
+ }
+ 
+ module_init(vgem_init);

@@ -1,0 +1,32 @@
+--- a/drivers/gpu/drm/vgem/vgem_drv.c
++++ b/drivers/gpu/drm/vgem/vgem_drv.c
+@@ -300,6 +300,20 @@
+ 	return 0;
+ }
+ 
++/*
++ * Aquamarine requires DRM_PRIME_CAP_IMPORT. Only buffers vgem exported itself are accepted:
++ * drm_gem_prime_import short-circuits those to the existing GEM object without attaching.
++ * Foreign buffers are refused because this 4.9 vgem device has no parent struct device,
++ * and dma_buf_attach would WARN on it.
++ */
++static struct drm_gem_object *vgem_prime_import(struct drm_device *dev,
++						struct dma_buf *dma_buf)
++{
++	if (dma_buf->owner != THIS_MODULE)
++		return ERR_PTR(-EOPNOTSUPP);
++	return drm_gem_prime_import(dev, dma_buf);
++}
++
+ static struct drm_driver vgem_driver = {
+ 	.driver_features		= DRIVER_GEM | DRIVER_PRIME,
+ 	.open				= vgem_open,
+@@ -314,6 +328,8 @@
+ 	.dumb_map_offset		= vgem_gem_dumb_map,
+ 
+ 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
++	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
++	.gem_prime_import = vgem_prime_import,
+ 	.gem_prime_pin = vgem_prime_pin,
+ 	.gem_prime_export = drm_gem_prime_export,
+ 	.gem_prime_get_sg_table = vgem_prime_get_sg_table,

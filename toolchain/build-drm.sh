@@ -11,6 +11,7 @@ CONFIG_DRM_VGEM=m
 # CONFIG_DRM_FBDEV_EMULATION is not set
 CFG
 make -C /w O=$O olddefconfig >/dev/null
+for p in /patches/*.patch; do patch -d /w -p1 -N -r - --dry-run -s < "$p" >/dev/null && patch -d /w -p1 -N -s < "$p"; done
 norm() { grep -E '^(CONFIG_|# CONFIG_)' "$1" | sort; }
 diff <(norm /cfg) <(norm $O/.config) > /out/drm-config.diff || true
 cat /out/drm-config.diff

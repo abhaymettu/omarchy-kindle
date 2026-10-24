@@ -1,0 +1,103 @@
+diff -ruN a/drivers/gpu/drm/drm_ioctl.c b/drivers/gpu/drm/drm_ioctl.c
+--- a/drivers/gpu/drm/drm_ioctl.c	2026-10-24 17:53:47.065569826 +0000
++++ b/drivers/gpu/drm/drm_ioctl.c	2026-10-24 17:53:47.065942701 +0000
+@@ -277,6 +277,9 @@
+ 	case DRM_CAP_ADDFB2_MODIFIERS:
+ 		req->value = dev->mode_config.allow_fb_modifiers;
+ 		break;
++	case DRM_CAP_CRTC_IN_VBLANK_EVENT:
++		req->value = 1;
++		break;
+ 	default:
+ 		return -EINVAL;
+ 	}
+diff -ruN a/drivers/gpu/drm/drm_irq.c b/drivers/gpu/drm/drm_irq.c
+--- a/drivers/gpu/drm/drm_irq.c	2026-10-24 17:53:47.066253910 +0000
++++ b/drivers/gpu/drm/drm_irq.c	2026-10-24 17:53:47.066339326 +0000
+@@ -972,9 +972,17 @@
+ 		struct drm_pending_vblank_event *e,
+ 		unsigned long seq, struct timeval *now)
+ {
++	struct drm_crtc *crtc;
++
+ 	e->event.sequence = seq;
+ 	e->event.tv_sec = now->tv_sec;
+ 	e->event.tv_usec = now->tv_usec;
++	/* Backport of the 4.12 CRTC_IN_VBLANK_EVENT contract: reserved carries the crtc id. */
++	e->event.reserved = 0;
++	if (drm_core_check_feature(dev, DRIVER_MODESET))
++		drm_for_each_crtc(crtc, dev)
++			if (drm_crtc_index(crtc) == e->pipe)
++				e->event.reserved = crtc->base.id;
+ 
+ 	trace_drm_vblank_event_delivered(e->base.pid, e->pipe,
+ 					 e->event.sequence);
+diff -ruN a/drivers/gpu/drm/vgem/vgem_drv.c b/drivers/gpu/drm/vgem/vgem_drv.c
+--- a/drivers/gpu/drm/vgem/vgem_drv.c	2026-10-24 17:53:47.066541451 +0000
++++ b/drivers/gpu/drm/vgem/vgem_drv.c	2026-10-24 17:53:47.066605160 +0000
+@@ -313,8 +313,23 @@
+ 	return drm_gem_prime_import(dev, dma_buf);
+ }
+ 
++/*
++ * Zero-object KMS: Aquamarine's DRM backend needs drmModeGetResources to succeed. vgem has no
++ * display hardware, so it registers an empty mode config. ADDFB must fail cleanly rather than
++ * hit a NULL fb_create.
++ */
++static struct drm_framebuffer *vgem_fb_create(struct drm_device *dev, struct drm_file *file,
++					      const struct drm_mode_fb_cmd2 *cmd)
++{
++	return ERR_PTR(-EOPNOTSUPP);
++}
++
++static const struct drm_mode_config_funcs vgem_mode_config_funcs = {
++	.fb_create = vgem_fb_create,
++};
++
+ static struct drm_driver vgem_driver = {
+-	.driver_features		= DRIVER_GEM | DRIVER_PRIME,
++	.driver_features		= DRIVER_GEM | DRIVER_PRIME | DRIVER_MODESET,
+ 	.open				= vgem_open,
+ 	.preclose			= vgem_preclose,
+ 	.gem_free_object_unlocked	= vgem_gem_free_object,
+@@ -355,6 +370,13 @@
+ 		goto out;
+ 	}
+ 
++	drm_mode_config_init(vgem_device);
++	vgem_device->mode_config.min_width = 1;
++	vgem_device->mode_config.min_height = 1;
++	vgem_device->mode_config.max_width = 8192;
++	vgem_device->mode_config.max_height = 8192;
++	vgem_device->mode_config.funcs = &vgem_mode_config_funcs;
++
+ 	ret  = drm_dev_register(vgem_device, 0);
+ 	if (ret)
+ 		goto out_unref;
+@@ -362,6 +384,7 @@
+ 	return 0;
+ 
+ out_unref:
++	drm_mode_config_cleanup(vgem_device);
+ 	drm_dev_unref(vgem_device);
+ out:
+ 	return ret;
+@@ -370,6 +393,7 @@
+ static void __exit vgem_exit(void)
+ {
+ 	drm_dev_unregister(vgem_device);
++	drm_mode_config_cleanup(vgem_device);
+ 	drm_dev_unref(vgem_device);
+ }
+ 
+diff -ruN a/include/uapi/drm/drm.h b/include/uapi/drm/drm.h
+--- a/include/uapi/drm/drm.h	2026-10-24 17:53:47.066932076 +0000
++++ b/include/uapi/drm/drm.h	2026-10-24 17:53:47.067160535 +0000
+@@ -647,6 +647,7 @@
+ #define DRM_CAP_CURSOR_HEIGHT		0x9
+ #define DRM_CAP_ADDFB2_MODIFIERS	0x10
+ #define DRM_CAP_PAGE_FLIP_TARGET	0x11
++#define DRM_CAP_CRTC_IN_VBLANK_EVENT	0x12
+ 
+ /** DRM_IOCTL_GET_CAP ioctl argument type */
+ struct drm_get_cap {

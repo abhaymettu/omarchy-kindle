@@ -4,3 +4,8 @@ out/device/piggy.lzo
 out/device/Image
 out/drm-build/modules/
 *.ko
+bridge/FBInk/
+bridge/kbridge
+bridge/gbmprobe
+bridge/udevprobe
+bridge/wlr-screencopy-*
