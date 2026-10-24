@@ -1,0 +1,6 @@
+out/device/kernel-p1.img
+out/device/zImage
+out/device/piggy.lzo
+out/device/Image
+out/drm-build/modules/
+*.ko
