@@ -15,6 +15,15 @@ PAUSED="cvm awesome KPPMainApp luajit"
 pause_host() { for p in $PAUSED; do pids=$(pidof $p) && kill -STOP $pids; done; echo "$(date +%s)" > $D/paused; }
 resume_host() { for p in $PAUSED; do pids=$(pidof $p) && kill -CONT $pids; done; rm -f $D/paused; }
 sweep_chroot() { for d in /proc/[0-9]*; do [ "$(readlink $d/root 2>/dev/null)" = $M ] && kill $1 ${d#/proc/} 2>/dev/null; done; }
+# Compressed swap in RAM: Firefox beside the Omarchy shell needs it. It is gone after a reboot, so it is
+# set up here, and only when no swap exists, since a zram device in use cannot be resized.
+ensure_zram() {
+  [ "$(wc -l < /proc/swaps)" -gt 1 ] && return
+  for i in 0 1; do
+    [ -e /sys/block/zram$i ] || cat /sys/class/zram-control/hot_add > /dev/null
+    echo 384M > /sys/block/zram$i/disksize && mkswap /dev/zram$i > /dev/null && swapon -p 100 /dev/zram$i
+  done
+}
 start_bridge() {
   setsid chroot $M /usr/bin/env -i PATH=/usr/bin XDG_RUNTIME_DIR=$RUN WAYLAND_DISPLAY=wayland-1 \
     /usr/local/bin/kbridge > $M/tmp/kbridge.log 2>&1 < /dev/null &
@@ -24,6 +33,7 @@ case "$1" in
 start)
   running && { echo "already running"; exit 0; }
   grep -q '^vgem ' /proc/modules || $D/bin/modules.sh load || exit 1
+  ensure_zram
   $C up
   chmod 666 /dev/dri/card0 /dev/input/event*
   grep -q '^omarchy:' $M/etc/passwd || chroot $M useradd -m -u 1000 -G video,input omarchy
