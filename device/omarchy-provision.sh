@@ -10,7 +10,11 @@ THEME=${THEME:-White}
 [ -d $M/usr/share/omarchy/config ] || { echo "Omarchy not installed at /usr/share/omarchy"; exit 1; }
 mkdir -p $H/.config
 chroot $M /usr/bin/cp -r --update=none /usr/share/omarchy/config/. /home/omarchy/.config/ || exit 1
-cp -r $D/overlay/. $M/
+# Copy only what changed: Hyprland reloads its Lua config on every write, and a reload on a busy CPU
+# overruns Hyprland's fixed 1.5 s config-reload budget.
+(cd $D/overlay && find . -type f) | while read -r f; do
+  cmp -s "$D/overlay/$f" "$M/$f" || { mkdir -p "$(dirname "$M/$f")" && cp "$D/overlay/$f" "$M/$f"; }
+done
 chroot $M chown -R omarchy:omarchy /home/omarchy
 [ -f $H/.config/omarchy/branding/about.txt ] || { mkdir -p $H/.config/omarchy/branding && cp $M/usr/share/omarchy/icon.txt $H/.config/omarchy/branding/about.txt && chroot $M chown -R omarchy:omarchy /home/omarchy/.config/omarchy; }
 mkdir -p $M/etc/fastfetch && cp $M/usr/share/omarchy/etc/fastfetch/config.jsonc $M/etc/fastfetch/
