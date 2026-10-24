@@ -1,11 +1,11 @@
 #!/bin/sh
-# Seeds user omarchy with Omarchy's shipped configs, the Kindle overrides and a light theme.
+# Seeds user omarchy with Omarchy's shipped configs, the Kindle overrides and a theme.
 # Idempotent: Omarchy's config is copied without overwriting, the Kindle overlay always wins,
 # and the theme is set only when none is set yet. Needs the chroot up and /usr/share/omarchy installed.
 D=/mnt/base-us/omarchy
 M=/var/tmp/omarchy
 H=$M/home/omarchy
-THEME=${THEME:-White}
+THEME=${THEME:-Tokyo Night}
 
 [ -d $M/usr/share/omarchy/config ] || { echo "Omarchy not installed at /usr/share/omarchy"; exit 1; }
 mkdir -p $H/.config
