@@ -8,3 +8,6 @@ libudev-zero/libudev.so.1:
 	git clone --depth 1 --branch $(TAG) https://github.com/illiliti/libudev-zero.git
 	patch -d libudev-zero -p1 < mt-touchscreen.patch
 	$(MAKE) -C libudev-zero
+
+out/libqt-sigchld.so: qt-sigchld.cpp
+	mkdir -p out && g++ -O2 -shared -fPIC -o $@ $< $$(pkg-config --cflags --libs Qt6Core)

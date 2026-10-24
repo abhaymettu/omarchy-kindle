@@ -1,12 +1,12 @@
 #!/bin/sh
-# On-device Omarchy session control. Usage: session.sh start [--headless] | stop | status | ctl HYPRCTL-ARGS... | run CMD... | open-url URL | proof DIR
+# On-device Omarchy session control. Usage: session.sh start [--headless] | stop | status | ctl HYPRCTL-ARGS... | run CMD... | exec CMD | about | open-url URL | proof DIR
 # Hyprland runs as user omarchy inside the Arch chroot, on vgem, with a headless 1072x1448 output.
 # While a session runs, the Kindle UI and KOReader are paused (SIGSTOP) and kbridge owns the panel.
 D=/mnt/base-us/omarchy
 M=/var/tmp/omarchy
 C=$D/bin/chroot.sh
 RUN="/run/user/1000"
-ENVV="HOME=/home/omarchy USER=omarchy PATH=/usr/bin XDG_RUNTIME_DIR=$RUN LD_LIBRARY_PATH=/usr/local/lib/udev-zero"
+ENVV="HOME=/home/omarchy USER=omarchy LANG=C.UTF-8 OMARCHY_PATH=/usr/share/omarchy PATH=/usr/share/omarchy/bin:/usr/local/bin:/usr/bin XDG_RUNTIME_DIR=$RUN LD_LIBRARY_PATH=/usr/local/lib/udev-zero"
 
 as_user() { chroot $M /usr/bin/setpriv --reuid=1000 --regid=1000 --init-groups /usr/bin/env -i $ENVV "$@"; }
 sig() { ls -t $M$RUN/hypr 2>/dev/null | head -1; }
@@ -27,10 +27,10 @@ start)
   chmod 666 /dev/dri/card0 /dev/input/event*
   grep -q '^omarchy:' $M/etc/passwd || chroot $M useradd -m -u 1000 -G video,input omarchy
   mkdir -p $M$RUN && chroot $M chown omarchy:omarchy $RUN && chmod 700 $M$RUN
-  mkdir -p $M/home/omarchy/.config && cp -r $M/root/.config/hypr $M/home/omarchy/.config/ && chroot $M chown -R omarchy:omarchy /home/omarchy/.config
+  $D/bin/omarchy-provision.sh || exit 1
   setsid sh -c "chroot $M /usr/bin/setpriv --reuid=1000 --regid=1000 --init-groups /usr/bin/env -i $ENVV \
     AQ_DRM_DEVICES=/dev/dri/card0 AQ_NO_KMS_REQUIREMENT=1 LIBSEAT_BACKEND=noop LP_NUM_THREADS=2 \
-    dbus-run-session Hyprland > $M/tmp/hypr.log 2>&1" < /dev/null > /dev/null 2>&1 &
+    dbus-run-session start-hyprland > $M/tmp/hypr.log 2>&1" < /dev/null > /dev/null 2>&1 &
   for i in $(seq 1 60); do
     if [ -n "$(sig)" ] && as_user env HYPRLAND_INSTANCE_SIGNATURE=$(sig) hyprctl monitors 2>/dev/null | grep -q '^Monitor KINDLE'; then
       [ "$2" = "--headless" ] || { pause_host; start_bridge; }
@@ -42,6 +42,7 @@ start)
   ;;
 stop)
   pidof kbridge >/dev/null && kill $(pidof kbridge)
+  pidof start-hyprland >/dev/null && kill $(pidof start-hyprland)
   running && kill $(pidof Hyprland)
   for i in $(seq 1 10); do running || break; sleep 1; done
   running && kill -9 $(pidof Hyprland)
@@ -61,7 +62,16 @@ run)
   ;;
 open-url)
   running || { echo "session not running"; exit 1; }
-  as_user env HYPRLAND_INSTANCE_SIGNATURE=$(sig) hyprctl dispatch exec "MOZ_ENABLE_WAYLAND=1 firefox --new-tab '$2'"
+  $0 exec "MOZ_ENABLE_WAYLAND=1 firefox --new-tab '$2'"
+  ;;
+about)
+  # Omarchy's About layout (fastfetch with the Omarchy logo) in a centred floating window sized for the panel.
+  $0 ctl eval 'omarchy_about_size_rule = hl.window_rule({ match = { class = "org.omarchy.about" }, size = { 1000, 560 } })' >/dev/null
+  $0 exec 'foot --app-id=org.omarchy.about -e bash -c "fastfetch; exec sleep infinity"'
+  ;;
+exec)
+  running || { echo "session not running"; exit 1; }
+  shift; as_user env HYPRLAND_INSTANCE_SIGNATURE=$(sig) hyprctl dispatch "hl.dsp.exec_cmd([[$*]])"
   ;;
 proof)
   # Evidence for a remote action: what Hyprland composed, what the panel framebuffer holds, which windows exist.

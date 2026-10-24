@@ -1,6 +1,6 @@
 #!/bin/bash
 # Remote control for the Omarchy session on the Kindle.
-# Usage: kctl start | stop | status | open-url URL | exec CMD | proof
+# Usage: kctl start | stop | status | about | open-url URL | exec CMD | proof
 # Every action except stop/status ends with a proof bundle in out/proof/<timestamp>/:
 # hyprland.png (compositor capture), fb0.png (panel framebuffer readback), clients.json, SHA256SUMS.
 set -euo pipefail
@@ -24,8 +24,9 @@ proof() {
 
 case "${1:-}" in
 start|stop|status) k "$S $1" ;;
+about) k "$S about"; sleep "${WAIT:-45}"; proof ;;
 open-url) k "$S open-url '$2'"; sleep "${WAIT:-25}"; proof ;;
-exec) shift; k "$S ctl dispatch exec '$*'"; sleep "${WAIT:-10}"; proof ;;
+exec) shift; k "$S exec '$*'"; sleep "${WAIT:-10}"; proof ;;
 proof) proof ;;
 *) sed -n 2,5p "$0"; exit 1 ;;
 esac

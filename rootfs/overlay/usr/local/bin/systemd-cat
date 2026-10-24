@@ -1,0 +1,11 @@
+#!/bin/sh
+# The chroot has no journald, so Omarchy's launchers log to their parent's output instead.
+while [ $# -gt 0 ]; do
+  case $1 in
+    --) shift; break ;;
+    -t|-p|--identifier|--priority) shift 2 ;;
+    -*) shift ;;
+    *) break ;;
+  esac
+done
+exec "$@"

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Qt's child reaping needs a fix on the 4.9 kernel; see compat/qt-sigchld.cpp.
+# The software scene graph skips llvmpipe: e-ink shows no effects, and it saves the shader memory.
+LD_PRELOAD=/usr/local/lib/libqt-sigchld.so QT_QUICK_BACKEND=software exec /usr/bin/quickshell "$@"
