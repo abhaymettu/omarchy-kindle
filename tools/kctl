@@ -1,0 +1,31 @@
+#!/bin/bash
+# Remote control for the Omarchy session on the Kindle.
+# Usage: kctl start | stop | status | open-url URL | exec CMD | proof
+# Every action except stop/status ends with a proof bundle in out/proof/<timestamp>/:
+# hyprland.png (compositor capture), fb0.png (panel framebuffer readback), clients.json, SHA256SUMS.
+set -euo pipefail
+R=$(cd "$(dirname "$0")/.." && pwd)
+KEY=$HOME/.ssh/kindle_koreader
+HOST=KINDLE_HOST
+nc -z -G 2 $HOST 2222 2>/dev/null || HOST=KINDLE_HOST_FALLBACK
+k() { ssh -o BatchMode=yes -o ConnectTimeout=8 -i "$KEY" -p 2222 root@$HOST "$@"; }
+S=/mnt/base-us/omarchy/bin/session.sh
+
+proof() {
+  ts=$(date +%Y%m%d-%H%M%S); dir=$R/out/proof/$ts; mkdir -p "$dir"
+  k "$S proof /tmp/proof-$ts" > "$dir/SHA256SUMS"
+  for f in hyprland.png fb0.y8 clients.json; do
+    k "cat /var/tmp/omarchy/tmp/proof-$ts/$f" > "$dir/$f"
+  done
+  python3 "$R/tools/y8_to_png.py" "$dir/fb0.y8" "$dir/fb0.png" 1072 1448
+  (cd "$dir" && shasum -a 256 -c SHA256SUMS --quiet) && echo "proof $dir"
+  python3 -c 'import json,sys; [print(" window:", c["class"], "|", c["title"]) for c in json.load(open(sys.argv[1]))]' "$dir/clients.json"
+}
+
+case "${1:-}" in
+start|stop|status) k "$S $1" ;;
+open-url) k "$S open-url '$2'"; sleep "${WAIT:-25}"; proof ;;
+exec) shift; k "$S ctl dispatch exec '$*'"; sleep "${WAIT:-10}"; proof ;;
+proof) proof ;;
+*) sed -n 2,5p "$0"; exit 1 ;;
+esac

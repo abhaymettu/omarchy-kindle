@@ -9,3 +9,5 @@ bridge/kbridge
 bridge/gbmprobe
 bridge/udevprobe
 bridge/wlr-screencopy-*
+out/proof/
+out/pkgs/

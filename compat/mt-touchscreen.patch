@@ -1,0 +1,14 @@
+--- a/udev_device.c
++++ b/udev_device.c
+@@ -487,6 +487,11 @@
+                 udev_list_entry_add(&udev_device->properties, "ID_INPUT_MOUSE", "1", 0);
+             }
+         }
++        // MT-only panels (Kindle pt_mt) report neither ABS_X/Y nor BTN_TOUCH; systemd's input_id
++        // still treats MT coordinates as a touchscreen.
++        else if (test_bit(abs_bits, ABS_MT_POSITION_X) && test_bit(abs_bits, ABS_MT_POSITION_Y)) {
++            udev_list_entry_add(&udev_device->properties, "ID_INPUT_TOUCHSCREEN", "1", 0);
++        }
+     }
+     if (test_bit(ev_bits, EV_REL)) {
+         if (test_bit(rel_bits, REL_Y) && test_bit(rel_bits, REL_X) &&

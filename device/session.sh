@@ -1,5 +1,5 @@
 #!/bin/sh
-# On-device Omarchy session control. Usage: session.sh start [--headless] | stop | status | ctl HYPRCTL-ARGS... | run CMD...
+# On-device Omarchy session control. Usage: session.sh start [--headless] | stop | status | ctl HYPRCTL-ARGS... | run CMD... | open-url URL | proof DIR
 # Hyprland runs as user omarchy inside the Arch chroot, on vgem, with a headless 1072x1448 output.
 # While a session runs, the Kindle UI and KOReader are paused (SIGSTOP) and kbridge owns the panel.
 D=/mnt/base-us/omarchy
@@ -30,7 +30,7 @@ start)
   mkdir -p $M/home/omarchy/.config && cp -r $M/root/.config/hypr $M/home/omarchy/.config/ && chroot $M chown -R omarchy:omarchy /home/omarchy/.config
   setsid sh -c "chroot $M /usr/bin/setpriv --reuid=1000 --regid=1000 --init-groups /usr/bin/env -i $ENVV \
     AQ_DRM_DEVICES=/dev/dri/card0 AQ_NO_KMS_REQUIREMENT=1 LIBSEAT_BACKEND=noop LP_NUM_THREADS=2 \
-    Hyprland > $M/tmp/hypr.log 2>&1" < /dev/null > /dev/null 2>&1 &
+    dbus-run-session Hyprland > $M/tmp/hypr.log 2>&1" < /dev/null > /dev/null 2>&1 &
   for i in $(seq 1 60); do
     if [ -n "$(sig)" ] && as_user env HYPRLAND_INSTANCE_SIGNATURE=$(sig) hyprctl monitors 2>/dev/null | grep -q '^Monitor KINDLE'; then
       [ "$2" = "--headless" ] || { pause_host; start_bridge; }
@@ -58,5 +58,17 @@ ctl)
   ;;
 run)
   shift; as_user env HYPRLAND_INSTANCE_SIGNATURE=$(sig) WAYLAND_DISPLAY=wayland-1 "$@"
+  ;;
+open-url)
+  running || { echo "session not running"; exit 1; }
+  as_user env HYPRLAND_INSTANCE_SIGNATURE=$(sig) hyprctl dispatch exec "MOZ_ENABLE_WAYLAND=1 firefox --new-tab '$2'"
+  ;;
+proof)
+  # Evidence for a remote action: what Hyprland composed, what the panel framebuffer holds, which windows exist.
+  out=${2:-/tmp/proof}; mkdir -p $M$out && chroot $M chown omarchy:omarchy $out
+  as_user env HYPRLAND_INSTANCE_SIGNATURE=$(sig) hyprctl -j clients > $M$out/clients.json
+  as_user env HYPRLAND_INSTANCE_SIGNATURE=$(sig) WAYLAND_DISPLAY=wayland-1 grim $out/hyprland.png
+  dd if=/dev/fb0 bs=1072 count=1448 2>/dev/null > $M$out/fb0.y8
+  cd $M$out && sha256sum hyprland.png fb0.y8 clients.json
   ;;
 esac
