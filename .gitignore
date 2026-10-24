@@ -11,3 +11,4 @@ bridge/udevprobe
 bridge/wlr-screencopy-*
 out/proof/
 out/pkgs/
+bridge/kexit
