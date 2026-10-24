@@ -4,11 +4,7 @@
 # Every action except stop/status ends with a proof bundle in out/proof/<timestamp>/:
 # hyprland.png (compositor capture), fb0.png (panel framebuffer readback), clients.json, SHA256SUMS.
 set -euo pipefail
-R=$(cd "$(dirname "$0")/.." && pwd)
-KEY=$HOME/.ssh/kindle_koreader
-HOST=KINDLE_HOST
-nc -z -G 2 $HOST 2222 2>/dev/null || HOST=KINDLE_HOST_FALLBACK
-k() { ssh -o BatchMode=yes -o ConnectTimeout=8 -i "$KEY" -p 2222 root@$HOST "$@"; }
+. "$(dirname "$0")/ssh.sh"
 S=/mnt/base-us/omarchy/bin/session.sh
 
 proof() {

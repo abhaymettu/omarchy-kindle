@@ -4,7 +4,7 @@
 set -euo pipefail
 B=${1:?backup dir}
 mkdir -p "$B" && cd "$B" && rm -f MD5SUMS
-k() { ssh -o BatchMode=yes -i "$HOME/.ssh/kindle_koreader" -p 2222 root@"${KINDLE_HOST:-KINDLE_HOST}" "$@"; }
+. "$(dirname "$0")/../tools/ssh.sh"
 
 for p in mmcblk0p1 mmcblk0p2 mmcblk0p4 mmcblk0p8 mmcblk0boot0 mmcblk0boot1; do
   k "dd if=/dev/$p bs=1M 2>/dev/null" > "$p.img"
