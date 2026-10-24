@@ -1,0 +1,10 @@
+Licensing exceptions to the MIT license in LICENSE:
+
+- patches/ and toolchain/ext-hdmi/ modify or build parts of the Linux kernel
+  and are licensed under GPL-2.0, like the kernel they apply to. The kernel
+  modules built from them are GPL-2.0.
+- compat/mt-touchscreen.patch is a patch to libudev-zero and is offered under
+  libudev-zero's ISC license.
+- bridge/kbridge links FBInk statically. FBInk is GPL-3.0, so a distributed
+  kbridge binary is GPL-3.0. FBInk, libudev-zero and the kernel source are
+  fetched at build time and are not part of this repository.

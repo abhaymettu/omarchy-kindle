@@ -199,4 +199,4 @@ theme with `tools/install-omarchy.sh` first.
 ## License
 
 MIT for this project's own code. The kernel patches and modules are GPL-2.0, and a distributed
-`kbridge` binary is GPL-3.0 because it links FBInk. See [LICENSE](LICENSE).
+`kbridge` binary is GPL-3.0 because it links FBInk. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
