@@ -1,14 +1,16 @@
-out/device/kernel-p1.img
-out/device/zImage
-out/device/piggy.lzo
-out/device/Image
-out/drm-build/modules/
+# Build output
+out/
 *.ko
 bridge/FBInk/
 bridge/kbridge
+bridge/kexit
 bridge/gbmprobe
 bridge/udevprobe
 bridge/wlr-screencopy-*
-out/proof/
-out/pkgs/
-bridge/kexit
+compat/out/
+compat/libudev-zero/
+rootfs/overlay/usr/local/lib/libqt-sigchld.so
+rootfs/overlay/usr/local/lib/udev-zero/
+
+# Local device settings
+.kindle.env
