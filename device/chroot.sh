@@ -7,13 +7,13 @@ up() {
   mountpoint -q $M && return 0
   mkdir -p $M
   mount -o loop,noatime $D/arch.ext4 $M || exit 1
-  for f in proc sys dev dev/pts; do mount --bind /$f $M/$f; done
+  for f in proc sys dev dev/pts dev/shm; do mount --bind /$f $M/$f; done
   mount -t tmpfs -o size=128m tmpfs $M/tmp
   mkdir -p $M/run/user/0 && chmod 700 $M/run/user/0
   cp /etc/resolv.conf $M/etc/resolv.conf 2>/dev/null
 }
 down() {
-  for f in tmp dev/pts dev sys proc ""; do mountpoint -q $M/$f && umount $M/$f; done
+  for f in tmp dev/shm dev/pts dev sys proc ""; do mountpoint -q $M/$f && umount $M/$f; done
 }
 case "$1" in
 up) up ;;

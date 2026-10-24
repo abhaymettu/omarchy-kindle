@@ -38,7 +38,9 @@ int main(int argc, char **argv) {
 	int prime = gbm_bo_get_fd(bo);
 	printf("bo %ux%u stride %u prime_fd %d\n", gbm_bo_get_width(bo), gbm_bo_get_height(bo), gbm_bo_get_stride(bo), prime);
 
-	EGLDisplay dpy = eglGetPlatformDisplay(EGL_PLATFORM_GBM_KHR, gbm, NULL);
+	int fd2 = open(node, O_RDWR | O_CLOEXEC);
+	struct gbm_device *gbm2 = gbm_create_device(fd2);
+	EGLDisplay dpy = eglGetPlatformDisplay(EGL_PLATFORM_GBM_KHR, gbm2, NULL);
 	EGLint major, minor;
 	if (!eglInitialize(dpy, &major, &minor))
 		return fail("eglInitialize");
@@ -57,7 +59,7 @@ int main(int argc, char **argv) {
 	}
 	if (!cfg)
 		return fail("no XRGB8888 config");
-	struct gbm_surface *gs = gbm_surface_create(gbm, W, H, GBM_FORMAT_XRGB8888, GBM_BO_USE_RENDERING);
+	struct gbm_surface *gs = gbm_surface_create(gbm2, W, H, GBM_FORMAT_XRGB8888, GBM_BO_USE_RENDERING);
 	if (!gs)
 		return fail("gbm_surface_create");
 	EGLSurface surf = eglCreatePlatformWindowSurface(dpy, cfg, gs, NULL);
@@ -66,6 +68,14 @@ int main(int argc, char **argv) {
 	if (surf == EGL_NO_SURFACE || ctx == EGL_NO_CONTEXT || !eglMakeCurrent(dpy, surf, surf, ctx))
 		return fail("surface/context");
 	printf("EGL %d.%d renderer %s, %s\n", major, minor, glGetString(GL_RENDERER), glGetString(GL_VERSION));
+
+	PFNEGLCREATEIMAGEKHRPROC create_image = (PFNEGLCREATEIMAGEKHRPROC)eglGetProcAddress("eglCreateImageKHR");
+	EGLint img_attrs[] = { EGL_WIDTH, W, EGL_HEIGHT, H, EGL_LINUX_DRM_FOURCC_EXT, GBM_FORMAT_XRGB8888,
+		EGL_DMA_BUF_PLANE0_FD_EXT, prime, EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
+		EGL_DMA_BUF_PLANE0_PITCH_EXT, (EGLint)gbm_bo_get_stride(bo),
+		EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, 0, EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, 0, EGL_NONE };
+	EGLImageKHR img = create_image(dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, img_attrs);
+	printf("dmabuf import on second fd, LINEAR modifier: %s (egl 0x%x)\n", img != EGL_NO_IMAGE_KHR ? "ok" : "FAILED", eglGetError());
 
 	GLuint tex, fbo;
 	unsigned char fpx[4] = { 0 };

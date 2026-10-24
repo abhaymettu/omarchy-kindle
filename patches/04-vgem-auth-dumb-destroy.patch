@@ -1,0 +1,23 @@
+diff -ruN a/drivers/gpu/drm/vgem/vgem_drv.c b/drivers/gpu/drm/vgem/vgem_drv.c
+--- a/drivers/gpu/drm/vgem/vgem_drv.c	2026-10-24 18:05:35.737879983 +0000
++++ b/drivers/gpu/drm/vgem/vgem_drv.c	2026-10-24 18:05:35.738111650 +0000
+@@ -94,6 +94,11 @@
+ 		return -ENOMEM;
+ 
+ 	file->driver_priv = vfile;
++	/*
++	 * 4.9 vgem has no render node, so unprivileged clients would need DRM auth for PRIME
++	 * import on card0. vgem drives no display, so grant what a render node would.
++	 */
++	file->authenticated = 1;
+ 
+ 	ret = vgem_fence_open(vfile);
+ 	if (ret) {
+@@ -341,6 +346,7 @@
+ 
+ 	.dumb_create			= vgem_gem_dumb_create,
+ 	.dumb_map_offset		= vgem_gem_dumb_map,
++	.dumb_destroy			= drm_gem_dumb_destroy,
+ 
+ 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
+ 	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,

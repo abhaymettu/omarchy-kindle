@@ -16,6 +16,7 @@ put $R/out/stage/SHA256SUMS $D/modules/SHA256SUMS
 put $R/device/modules.sh $D/bin/modules.sh
 for f in chroot session; do put $R/device/$f.sh $D/bin/$f.sh; done
 put $R/bridge/kbridge $D/bin/kbridge
+k "install -m 755 $D/bin/kbridge /var/tmp/omarchy/usr/local/bin/kbridge && sync"
 k "chmod +x $D/bin/*"
 
 if [ "${1:-}" = rootfs ]; then

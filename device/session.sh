@@ -1,6 +1,7 @@
 #!/bin/sh
-# On-device Omarchy session control. Usage: session.sh start | stop | status | ctl HYPRCTL-ARGS... | run CMD...
+# On-device Omarchy session control. Usage: session.sh start [--headless] | stop | status | ctl HYPRCTL-ARGS... | run CMD...
 # Hyprland runs as user omarchy inside the Arch chroot, on vgem, with a headless 1072x1448 output.
+# While a session runs, the Kindle UI and KOReader are paused (SIGSTOP) and kbridge owns the panel.
 D=/mnt/base-us/omarchy
 M=/var/tmp/omarchy
 C=$D/bin/chroot.sh
@@ -10,6 +11,13 @@ ENVV="HOME=/home/omarchy USER=omarchy PATH=/usr/bin XDG_RUNTIME_DIR=$RUN LD_LIBR
 as_user() { chroot $M /usr/bin/setpriv --reuid=1000 --regid=1000 --init-groups /usr/bin/env -i $ENVV "$@"; }
 sig() { ls -t $M$RUN/hypr 2>/dev/null | head -1; }
 running() { pidof Hyprland >/dev/null 2>&1; }
+PAUSED="cvm awesome KPPMainApp luajit"
+pause_host() { for p in $PAUSED; do pids=$(pidof $p) && kill -STOP $pids; done; echo "$(date +%s)" > $D/paused; }
+resume_host() { for p in $PAUSED; do pids=$(pidof $p) && kill -CONT $pids; done; rm -f $D/paused; }
+start_bridge() {
+  setsid chroot $M /usr/bin/env -i PATH=/usr/bin XDG_RUNTIME_DIR=$RUN WAYLAND_DISPLAY=wayland-1 \
+    /usr/local/bin/kbridge > $M/tmp/kbridge.log 2>&1 < /dev/null &
+}
 
 case "$1" in
 start)
@@ -24,16 +32,21 @@ start)
     AQ_DRM_DEVICES=/dev/dri/card0 AQ_NO_KMS_REQUIREMENT=1 LIBSEAT_BACKEND=noop LP_NUM_THREADS=2 \
     Hyprland > $M/tmp/hypr.log 2>&1" < /dev/null > /dev/null 2>&1 &
   for i in $(seq 1 60); do
-    [ -n "$(sig)" ] && as_user env HYPRLAND_INSTANCE_SIGNATURE=$(sig) hyprctl monitors 2>/dev/null | grep -q '^Monitor KINDLE' && { echo "started"; exit 0; }
+    if [ -n "$(sig)" ] && as_user env HYPRLAND_INSTANCE_SIGNATURE=$(sig) hyprctl monitors 2>/dev/null | grep -q '^Monitor KINDLE'; then
+      [ "$2" = "--headless" ] || { pause_host; start_bridge; }
+      echo "started"; exit 0
+    fi
     sleep 1
   done
   echo "Hyprland did not come up; tail of log:"; tail -5 $M/tmp/hypr.log; exit 1
   ;;
 stop)
+  pidof kbridge >/dev/null && kill $(pidof kbridge)
   running && kill $(pidof Hyprland)
   for i in $(seq 1 10); do running || break; sleep 1; done
   running && kill -9 $(pidof Hyprland)
   rm -rf $M$RUN/hypr $M$RUN/wayland-*
+  [ -f $D/paused ] && resume_host
   echo stopped
   ;;
 status)
