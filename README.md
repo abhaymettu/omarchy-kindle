@@ -5,11 +5,8 @@ Genuine, unpatched Hyprland, Omarchy's own config and Quickshell bar, Firefox, a
 terminal, all drawn to the e-ink panel.
 
 <p align="center">
-  <img src="docs/screenshot.png" width="420" alt="Omarchy on the Kindle: Firefox showing omarchy.org above a foot terminal running fastfetch, with the Omarchy bar on top">
-  &nbsp;
-  <img src="docs/eink.png" width="420" alt="The same frame read back from the Kindle's e-ink framebuffer in grayscale">
+  <img src="docs/screenshot.png" width="560" alt="Omarchy on the Kindle: Firefox showing omarchy.org above a foot terminal running fastfetch, with the Omarchy bar on top">
 </p>
-<p align="center"><sub>Left: what Hyprland renders. Right: the same frame read back from the panel's framebuffer.</sub></p>
 
 ## The hardware
 
